@@ -1,15 +1,13 @@
 from matplotlib import pyplot as plt
 import cv2
-import pytesseract
+import easyocr
 import sys
 
 
-def detect_text_tesseract(image_path):
+def detect_text_easyocr(image_path):
+    reader = easyocr.Reader(['ja'])
     img = cv2.imread(image_path)
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    prepre_img = pre_process(img)
-
-    results = pytesseract.image_to_data(prepre_img, output_type=pytesseract.Output.DICT)
+    results = reader.readtext(img)
 
     for i in range(len(results["text"])):
         if int(results["conf"][i]) > 60:
@@ -17,10 +15,10 @@ def detect_text_tesseract(image_path):
             text = results["text"][i]
 
             print(str(x) + "," + str(y) + "," + str(w) + "," + str(h))
-            cv2.rectangle(img_rgb, (x, y), (x + w, y + h), (255, 0, 0), 2)
-            cv2.putText(img_rgb, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+            cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 2)
+            cv2.putText(img, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
-    plt.imshow(img_rgb)
+    plt.imshow(img)
     plt.axis('off')
     plt.show()
 
