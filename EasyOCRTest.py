@@ -1,27 +1,42 @@
+from matplotlib import pyplot as plt
 import cv2
-import easyocr
-import fiftyone as fo
-import fiftyone.core.labels as fol
+import pytesseract
 import sys
 
 
-def detect_text_easyocr(image_path):
-    reader = easyocr.Reader(['en'])  # 言語を指定
+def detect_text_tesseract(image_path):
     img = cv2.imread(image_path)
-    results = reader.readtext(img)
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    prepre_img = pre_process(img)
 
-    detections = []
-    for (bbox, text, prob) in results:
-        if prob > 0.6:  # 信頼度のフィルタリング
-            (top_left, top_right, bottom_right, bottom_left) = bbox
-            x_min = min(top_left[0], bottom_left[0]) / img.shape[1]
-            y_min = min(top_left[1], top_right[1]) / img.shape[0]
-            x_max = max(top_right[0], bottom_right[0]) / img.shape[1]
-            y_max = max(bottom_left[1], bottom_right[1]) / img.shape[0]
-            bounding_box = [x_min, y_min, x_max - x_min, y_max - y_min]
-            detections.append(fol.Detection(label=text, bounding_box=bounding_box))
+    results = pytesseract.image_to_data(prepre_img, output_type=pytesseract.Output.DICT)
 
-    return detections
+    for i in range(len(results["text"])):
+        if int(results["conf"][i]) > 60:
+            x, y, w, h = results["left"][i], results["top"][i], results["width"][i], results["height"][i]
+            text = results["text"][i]
+
+            print(str(x) + "," + str(y) + "," + str(w) + "," + str(h))
+            cv2.rectangle(img_rgb, (x, y), (x + w, y + h), (255, 0, 0), 2)
+            cv2.putText(img_rgb, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+
+    plt.imshow(img_rgb)
+    plt.axis('off')
+    plt.show()
+
+
+def pre_process(img):
+    # グレースケール化
+    gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # バイラテラルフィルタでノイズ除去
+    denoised_image = cv2.bilateralFilter(gray_image, 9, 75, 75)
+    return denoised_image
+
+    # # 大津の方法で二値化
+    # _, binary_image = cv2.threshold(denoised_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    # return binary_image
 
 
 if __name__ == "__main__":
@@ -29,16 +44,4 @@ if __name__ == "__main__":
         sys.exit(1)
 
     image_path = sys.argv[1]
-
-    # FiftyOne用のサンプルデータセットを作成
-    dataset = fo.Dataset(name="book_covers")
-
-    detections = detect_text_easyocr(image_path)
-
-    # サンプル画像に検出されたテキストを追加
-    sample = fo.Sample(filepath=image_path)
-    sample["detections"] = fol.Detections(detections=detections)
-    dataset.add_sample(sample)
-
-    # FiftyOne GUIで結果を確認
-    session = fo.launch_app(dataset)
+    detect_text_tesseract(image_path)

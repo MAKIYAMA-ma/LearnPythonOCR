@@ -1,27 +1,44 @@
+from matplotlib import pyplot as plt
 import cv2
-import fiftyone as fo
-import fiftyone.core.labels as fol
 import pytesseract
 import sys
 
 
 def detect_text_tesseract(image_path):
-    # 画像を読み込む
     img = cv2.imread(image_path)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    prepre_img = pre_process(img)
 
-    # テキスト検出
-    results = pytesseract.image_to_data(img_rgb, output_type=pytesseract.Output.DICT)
+    # results = pytesseract.image_to_string(prepre_img, lang='jpn', output_type=pytesseract.Output.DICT)
+    results = pytesseract.image_to_data(prepre_img, output_type=pytesseract.Output.DICT)
+    print(results)
 
-    detections = []
     for i in range(len(results["text"])):
         if int(results["conf"][i]) > 60:  # 信頼度のフィルタリング
             x, y, w, h = results["left"][i], results["top"][i], results["width"][i], results["height"][i]
-            label = results["text"][i]
-            bounding_box = [x/img.shape[1], y/img.shape[0], w/img.shape[1], h/img.shape[0]]
-            detections.append(fol.Detection(label=label, bounding_box=bounding_box))
+            text = results["text"][i]
 
-    return detections
+            print(str(x) + "," + str(y) + "," + str(w) + "," + str(h))
+            cv2.rectangle(img_rgb, (x, y), (x + w, y + h), (255, 0, 0), 2)
+            cv2.putText(img_rgb, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+
+    plt.imshow(img_rgb)
+    plt.axis('off')
+    plt.show()
+
+
+def pre_process(img):
+    # グレースケール化
+    gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # バイラテラルフィルタでノイズ除去
+    denoised_image = cv2.bilateralFilter(gray_image, 9, 75, 75)
+    return denoised_image
+
+    # # 大津の方法で二値化
+    # _, binary_image = cv2.threshold(denoised_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    # return binary_image
 
 
 if __name__ == "__main__":
@@ -29,16 +46,4 @@ if __name__ == "__main__":
         sys.exit(1)
 
     image_path = sys.argv[1]
-
-    # FiftyOne用のサンプルデータセットを作成
-    dataset = fo.Dataset(name="book_covers")
-
-    detections = detect_text_tesseract(image_path)
-
-    # サンプル画像に検出されたテキストを追加
-    sample = fo.Sample(filepath=image_path)
-    sample["detections"] = fol.Detections(detections=detections)
-    dataset.add_sample(sample)
-
-    # FiftyOne GUIで結果を確認
-    session = fo.launch_app(dataset)
+    detect_text_tesseract(image_path)
