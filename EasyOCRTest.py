@@ -10,7 +10,7 @@ class EasyOCRTest(OCRTest):
     def detect_text_ocr(self, prepro_img, original_img):
         img = original_img
         reader = easyocr.Reader(['ja'])
-        results = reader.readtext(prepro_img)
+        results = reader.readtext(prepro_img, batch_size=2, min_size=100, link_threshold=0.2)
 
         img_pil = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
         draw = ImageDraw.Draw(img_pil)
@@ -18,7 +18,7 @@ class EasyOCRTest(OCRTest):
         font = ImageFont.truetype("msgothic.ttc", 40)
 
         for result in results:
-            if result[2] > 0.20:
+            if result[2] > 0.10:
                 # for tuning up
                 print(result)
             if result[2] > 0.60:
