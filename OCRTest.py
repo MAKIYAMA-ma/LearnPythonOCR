@@ -13,7 +13,12 @@ class OCRTest(metaclass=abc.ABCMeta):
         pass
 
     def pre_process(self, img):
-        temp_img = img
+        temp_img = img.copy()
+
+        # 黒っぽい色以外は白とする
+        # threshold = 200
+        # mask = (temp_img[:, :, 0] >= threshold) | (temp_img[:, :, 1] >= threshold) | (temp_img[:, :, 2] >= threshold)
+        # temp_img[mask] = [255, 255, 255]
 
         # グレースケール化
         if False:
@@ -31,7 +36,9 @@ class OCRTest(metaclass=abc.ABCMeta):
             # バイラテラルフィルタでノイズ除去
             temp_img = cv2.bilateralFilter(temp_img, 9, 75, 75)
 
-        # 大津の方法で二値化
+        # 大津法で二値化
+        # 本の表紙の場合、背景にも絵があるので二値化すると判読不可となる。
+        # 白地に文字を書いたようなドキュメントのOCRなら有効。
         # _, temp_img = cv2.threshold(temp_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
         # 傾き補正
